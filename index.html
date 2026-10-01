@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#010A13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="롤 로딩">
+<title>롤 로딩</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void: #010A13;
+    --panel: #091428;
+    --gold: #C8AA6E;
+    --gold-hi: #F0E6D2;
+    --gold-dim: #785A28;
+    --ally: #0AC8B9;
+    --enemy: #E84057;
+    --muted: #A09B8C;
+    --serif: "Noto Serif KR", "Nanum Myeongjo", serif;
+    --sans: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *, *::before, *::after { box-sizing: inherit; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: var(--void);
+    color: var(--gold-hi);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    background-image: radial-gradient(ellipse 120% 50% at 50% 0%, #0A1F3A 0%, transparent 70%);
+    background-repeat: no-repeat;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 12px 12px 32px; }
+  button { font: inherit; cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* 상단 바 */
+  .top { display: flex; align-items: center; justify-content: space-between; padding: 4px 2px 14px; }
+  .conn { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #555; }
+  .dot.on { background: var(--ally); box-shadow: 0 0 8px var(--ally); }
+  .ghost { background: none; border: 1px solid var(--gold-dim); color: var(--gold); padding: 6px 12px; font-size: 13px; }
+
+  /* 상태 영역 */
+  .hero {
+    position: relative;
+    text-align: center;
+    padding: 26px 16px 22px;
+    border: 1px solid var(--gold-dim);
+    outline: 1px solid rgba(200,170,110,.25);
+    outline-offset: 3px;
+    background: linear-gradient(180deg, rgba(9,20,40,.9), rgba(1,10,19,.9));
+    margin: 4px 4px 22px;
+  }
+  .state { font-family: var(--serif); font-weight: 900; font-size: 26px; color: var(--gold-hi); letter-spacing: .02em; margin: 0; }
+  .sub { color: var(--muted); font-size: 14px; margin: 8px 0 0; }
+  .timer {
+    font-family: var(--serif); font-weight: 900;
+    font-size: 72px; line-height: 1; margin: 10px 0 6px;
+    color: var(--gold); font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 24px rgba(200,170,110,.35);
+  }
+  .bar { height: 3px; background: rgba(200,170,110,.18); margin: 14px 8px 0; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold-dim), var(--gold)); transition: width .4s linear; }
+  .hero.alert .state { color: var(--ally); }
+  .hero.go { border-color: var(--ally); }
+
+  /* 팀 */
+  .team { margin-bottom: 20px; }
+  .team h2 { font-family: var(--serif); font-size: 16px; font-weight: 600; margin: 0 0 8px 2px; }
+  .team.ally h2 { color: var(--ally); }
+  .team.enemy h2 { color: var(--enemy); }
+  .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .card { min-width: 0; }
+  .art {
+    position: relative; aspect-ratio: 308 / 560; overflow: hidden;
+    background: var(--panel); border: 1px solid var(--gold-dim);
+  }
+  .ally .art { border-color: rgba(10,200,185,.55); }
+  .enemy .art { border-color: rgba(232,64,87,.55); }
+  .card.me .art { border: 2px solid var(--gold); box-shadow: 0 0 12px rgba(200,170,110,.5); }
+  .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .art .cn {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 14px 2px 5px; text-align: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+    background: linear-gradient(transparent, rgba(0,0,0,.85));
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .spells { display: flex; gap: 3px; margin-top: 5px; }
+  .spells img, .spells span { width: calc(50% - 1.5px); aspect-ratio: 1; border: 1px solid var(--gold-dim); background: var(--panel); display: block; }
+  .mast { font-size: 11px; margin-top: 4px; color: var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+  .mast b { font-weight: 700; }
+  .mast .pts { color: var(--muted); }
+  .mast.first { color: var(--enemy); font-weight: 700; }
+  .nick { font-size: 11px; color: #ccc; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card.me .nick { color: var(--gold); font-weight: 700; }
+  .wait { color: var(--muted); font-size: 14px; text-align: center; padding: 28px 0; border: 1px dashed var(--gold-dim); }
+  .skel .art { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .45; } }
+
+  /* 연결 화면 */
+  .setup { padding-top: 12vh; text-align: center; }
+  .setup h1 { font-family: var(--serif); font-weight: 900; font-size: 34px; color: var(--gold); margin: 0 0 10px; }
+  .setup p { color: var(--muted); font-size: 15px; line-height: 1.6; margin: 0 auto 26px; max-width: 30em; }
+  .setup input {
+    width: 100%; max-width: 320px; padding: 14px; font-size: 18px; text-align: center;
+    background: var(--panel); color: var(--gold-hi); border: 1px solid var(--gold-dim);
+    font-family: var(--sans);
+  }
+  .primary {
+    display: block; width: 100%; max-width: 320px; margin: 12px auto 0; padding: 14px;
+    background: linear-gradient(180deg, #C8AA6E, #785A28); color: var(--void);
+    border: none; font-weight: 800; font-size: 16px;
+  }
+  .link { background: none; border: none; color: var(--muted); text-decoration: underline; margin-top: 18px; font-size: 14px; }
+  .err { color: var(--enemy); font-size: 14px; min-height: 1.4em; margin-top: 10px; }
+  .hidden { display: none !important; }
+  .demo-tag { font-size: 12px; color: var(--enemy); border: 1px solid var(--enemy); padding: 2px 6px; margin-left: 6px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skel .art { animation: none; }
+    .bar i { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 연결 화면 -->
+  <section id="setup" class="setup hidden">
+    <h1>롤 로딩</h1>
+    <p>PC 프로그램을 켜면 나오는 연결 코드를 입력하세요.<br>픽이 끝나면 로딩 시간과 양 팀 조합이 여기 뜹니다.</p>
+    <input id="codeInput" placeholder="lol-xxxxxxxxxxxx" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="err" id="err"></div>
+    <button class="primary" id="connectBtn">연결하기</button>
+    <button class="link" id="demoBtn">예시 화면 보기</button>
+  </section>
+
+  <!-- 메인 화면 -->
+  <section id="main" class="hidden">
+    <div class="top">
+      <div class="conn"><span class="dot" id="dot"></span><span id="connText">연결 중</span><span id="demoTag" class="demo-tag hidden">예시</span></div>
+      <button class="ghost" id="resetBtn">코드 변경</button>
+    </div>
+
+    <div class="hero" id="hero">
+      <p class="state" id="state">대기 중</p>
+      <div class="timer hidden" id="timer">0:00</div>
+      <p class="sub" id="sub">PC에서 롤 클라이언트를 기다리는 중</p>
+      <div class="bar hidden" id="barWrap"><i id="bar"></i></div>
+    </div>
+
+    <div id="teams"></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const NTFY = "https://ntfy.sh";
+  const DD = "https://ddragon.leagueoflegends.com";
+  const $ = id => document.getElementById(id);
+
+  let code = null;
+  let es = null;
+  let demo = false;
+  let S = { phase: null, loading: null, loadedSec: null, last: 0 };
+  let tick = null;
+
+  // ---------- 저장 ----------
+  const store = {
+    get() { try { return localStorage.getItem("lolCode"); } catch { return null; } },
+    set(v) { try { localStorage.setItem("lolCode", v); } catch {} },
+    del() { try { localStorage.removeItem("lolCode"); } catch {} },
+  };
+
+  // ---------- 상태 반영 ----------
+  function apply(msg) {
+    if (!msg || !msg.t) return;
+    S.last = Math.max(S.last, msg.ts || 0);
+    if (msg.t === "phase") {
+      S.phase = msg.phase;
+      if (["Matchmaking", "ReadyCheck", "ChampSelect"].includes(msg.phase)) {
+        S.loading = null; S.loadedSec = null;
+      }
+    } else if (msg.t === "loading") {
+      S.loading = msg; S.loadedSec = null; S.phase = "Loading";
+    } else if (msg.t === "loaded") {
+      S.loadedSec = msg.sec; S.phase = "Playing";
+    }
+  }
+
+  const PHASE_TEXT = {
+    Offline: ["PC 프로그램 꺼짐", "PC에서 lol_app_pc.py를 실행하세요"],
+    Online: ["대기 중", "롤 클라이언트를 켜면 자동으로 연결돼요"],
+    None: ["대기 중", "큐를 돌리면 알려드릴게요"],
+    Lobby: ["로비", "큐를 돌리면 알려드릴게요"],
+    Matchmaking: ["매칭 찾는 중", "잡히면 알림이 가요"],
+    ReadyCheck: ["매칭 잡힘!", "지금 수락하세요"],
+    ChampSelect: ["챔피언 선택 중", "픽 끝나면 알림이 가요"],
+    GameStart: ["게임 시작 중", ""],
+    InProgress: ["게임 진행 중", ""],
+    Reconnect: ["재접속 필요", "PC에서 재접속을 눌러주세요"],
+    WaitingForStats: ["게임 끝", "결과 집계 중"],
+    PreEndOfGame: ["게임 끝", ""],
+    EndOfGame: ["게임 끝", "다음 판도 화이팅"],
+  };
+
+  function fmtTime(s) {
+    s = Math.max(0, Math.floor(s));
+    return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  }
+  function fmtPts(p) {
+    return p >= 10000 ? (p / 10000).toFixed(1).replace(/\.0$/, "") + "만" : p.toLocaleString("ko-KR");
+  }
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  function renderHero() {
+    const hero = $("hero"), state = $("state"), sub = $("sub"), timer = $("timer"), barWrap = $("barWrap"), bar = $("bar");
+    hero.classList.remove("alert", "go");
+    timer.classList.add("hidden"); barWrap.classList.add("hidden");
+
+    if (S.phase === "Loading" && S.loading) {
+      const el = Date.now() / 1000 - S.loading.start;
+      state.textContent = "로딩 중";
+      timer.textContent = fmtTime(el);
+      timer.classList.remove("hidden");
+      const avg = S.loading.avg;
+      if (avg) {
+        barWrap.classList.remove("hidden");
+        bar.style.width = Math.min(el / avg, 0.97) * 100 + "%";
+        const rem = Math.round(avg - el);
+        sub.textContent = rem > 0 ? `평균 ${avg}초 기준, 약 ${rem}초 남음` : `평균(${avg}초)보다 늦어지는 중`;
+      } else {
+        sub.textContent = "첫 로딩이라 예상 시간은 다음 판부터 보여요";
+      }
+      hero.classList.add("alert");
+      return;
+    }
+    if (S.phase === "Playing") {
+      state.textContent = "게임 시작!";
+      sub.textContent = `로딩 ${S.loadedSec}초 걸림`;
+      hero.classList.add("go");
+      return;
+    }
+    const [a, b] = PHASE_TEXT[S.phase] || ["대기 중", "PC 프로그램 신호를 기다리는 중"];
+    state.textContent = a;
+    sub.textContent = b;
+    if (S.phase === "ReadyCheck") hero.classList.add("alert");
+  }
+
+  function card(p, ver) {
+    const champ = p.champ;
+    const art = champ ? `<img src="${DD}/cdn/img/champion/loading/${esc(champ.id)}_0.jpg" onerror="this.remove()" alt="${esc(champ.name)}" loading="lazy">` : "";
+    const spells = (p.spells || [null, null]).map(s =>
+      s ? `<img src="${DD}/cdn/${esc(ver)}/img/spell/${esc(s.id)}.png" onerror="this.style.visibility='hidden'" alt="${esc(s.name)}" title="${esc(s.name)}">` : `<span></span>`
+    ).join("");
+    let mast = "";
+    if (Array.isArray(p.mastery)) {
+      const [lvl, pts] = p.mastery;
+      mast = lvl ? `<div class="mast"><b>M${lvl}</b> <span class="pts">${fmtPts(pts)}</span></div>`
+                 : `<div class="mast first">첫 판</div>`;
+    }
+    return `<div class="card${p.me ? " me" : ""}">
+      <div class="art">${art}<div class="cn">${esc(champ ? champ.name : "?")}</div></div>
+      <div class="spells">${spells}</div>
+      ${mast}
+      <div class="nick">${esc(p.name)}</div>
+    </div>`;
+  }
+
+  function teamBlock(cls, title, players, ver) {
+    const body = players.length
+      ? players.map(p => card(p, ver)).join("")
+      : Array.from({ length: 5 }, () => `<div class="card skel"><div class="art"></div></div>`).join("");
+    return `<div class="team ${cls}"><h2>${title}</h2><div class="row">${body}</div></div>`;
+  }
+
+  let lastTeamsKey = "";
+  function renderTeams() {
+    const L = S.loading;
+    const key = L ? JSON.stringify([L.start, L.ally, L.enemy]) : "none";
+    if (key === lastTeamsKey) return;
+    lastTeamsKey = key;
+    if (!L) {
+      $("teams").innerHTML = `<div class="wait">픽이 끝나면 양 팀 조합이 여기 떠요</div>`;
+      return;
+    }
+    $("teams").innerHTML =
+      teamBlock("ally", "우리 팀", L.ally || [], L.ver) +
+      teamBlock("enemy", "상대 팀", L.enemy || [], L.ver);
+  }
+
+  function render() { renderHero(); renderTeams(); }
+
+  // ---------- 서버 연결 ----------
+  async function replay() {
+    try {
+      const r = await fetch(`${NTFY}/${encodeURIComponent(code)}-data/json?poll=1&since=3h`);
+      const text = await r.text();
+      const msgs = text.split("\n").filter(Boolean).map(l => {
+        try { const o = JSON.parse(l); return o.event === "message" ? JSON.parse(o.message) : null; } catch { return null; }
+      }).filter(Boolean).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      S = { phase: null, loading: null, loadedSec: null, last: 0 };
+      msgs.forEach(apply);
+      render();
+    } catch (e) {
+      $("connText").textContent = "인터넷 연결 확인";
+    }
+  }
+
+  function listen() {
+    if (es) es.close();
+    es = new EventSource(`${NTFY}/${encodeURIComponent(code)}-data/sse`);
+    es.onopen = () => { $("dot").classList.add("on"); $("connText").textContent = "연결됨"; };
+    es.onerror = () => { $("dot").classList.remove("on"); $("connText").textContent = "다시 연결 중"; };
+    es.onmessage = ev => {
+      try {
+        const o = JSON.parse(ev.data);
+        if (o.event !== "message") return;
+        apply(JSON.parse(o.message));
+        render();
+        if (navigator.vibrate && S.phase !== "Offline") navigator.vibrate(120);
+      } catch {}
+    };
+  }
+
+  function startTick() {
+    clearInterval(tick);
+    tick = setInterval(() => { if (S.phase === "Loading") renderHero(); }, 250);
+  }
+
+  async function connect(c) {
+    code = c; demo = false;
+    $("demoTag").classList.add("hidden");
+    $("setup").classList.add("hidden");
+    $("main").classList.remove("hidden");
+    await replay();
+    listen();
+    startTick();
+  }
+
+  // ---------- 예시 화면 ----------
+  async function startDemo() {
+    demo = true;
+    if (es) es.close();
+    let ver = "14.24.1";
+    try { ver = (await (await fetch(`${DD}/api/versions.json`)).json())[0]; } catch {}
+    const P = (name, id, cname, s1, s2, m, me) => ({
+      name, champ: { id, name: cname },
+      spells: [{ id: s1, name: "" }, { id: s2, name: "" }], mastery: m, me: !!me,
+    });
+    S = {
+      phase: "Loading", loadedSec: null, last: 0,
+      loading: {
+        start: Date.now() / 1000 - 18, avg: 52, ver,
+        ally: [
+          P("탑신병자", "Garen", "가렌", "SummonerFlash", "SummonerTeleport", [7, 312400]),
+          P("정글의왕", "LeeSin", "리 신", "SummonerFlash", "SummonerSmite", [10, 845100], true),
+          P("미드차이", "Ahri", "아리", "SummonerFlash", "SummonerDot", [5, 48200]),
+          P("원딜장인", "Jinx", "징크스", "SummonerFlash", "SummonerHeal", [8, 190300]),
+          P("서폿각", "Thresh", "쓰레쉬", "SummonerFlash", "SummonerExhaust", [0, 0]),
+        ],
+        enemy: [
+          P("상대탑", "Darius", "다리우스", "SummonerFlash", "SummonerTeleport", [12, 1203000]),
+          P("상대정글", "Kayn", "케인", "SummonerFlash", "SummonerSmite", [6, 77500]),
+          P("상대미드", "Zed", "제드", "SummonerFlash", "SummonerDot", [0, 0]),
+          P("상대원딜", "Caitlyn", "케이틀린", "SummonerFlash", "SummonerBarrier", [9, 402100]),
+          P("상대서폿", "Lux", "럭스", "SummonerFlash", "SummonerDot", [4, 31000]),
+        ],
+      },
+    };
+    $("setup").classList.add("hidden");
+    $("main").classList.remove("hidden");
+    $("demoTag").classList.remove("hidden");
+    $("dot").classList.remove("on");
+    $("connText").textContent = "미리보기";
+    lastTeamsKey = "";
+    render();
+    startTick();
+  }
+
+  // ---------- 화면 전환 ----------
+  function showSetup() {
+    if (es) es.close();
+    clearInterval(tick);
+    $("main").classList.add("hidden");
+    $("setup").classList.remove("hidden");
+    $("codeInput").value = store.get() || "";
+  }
+
+  $("connectBtn").onclick = () => {
+    const v = $("codeInput").value.trim();
+    if (!/^lol-[0-9a-f]{12}$/i.test(v)) {
+      $("err").textContent = "코드는 lol- 로 시작하는 16자리예요. PC 창에 뜬 코드를 그대로 입력하세요.";
+      return;
+    }
+    $("err").textContent = "";
+    store.set(v);
+    connect(v);
+  };
+  $("codeInput").addEventListener("keydown", e => { if (e.key === "Enter") $("connectBtn").click(); });
+  $("demoBtn").onclick = startDemo;
+  $("resetBtn").onclick = () => { if (demo) { showSetup(); return; } store.del(); showSetup(); };
+
+  // 앱으로 돌아왔을 때 최신 상태 다시 불러오기
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && code && !demo) { replay(); listen(); }
+  });
+
+  const saved = store.get();
+  if (new URLSearchParams(location.search).has("demo")) startDemo();
+  else if (saved) connect(saved);
+  else showSetup();
+})();
+</script>
+</body>
+</html>
